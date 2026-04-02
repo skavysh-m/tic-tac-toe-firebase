@@ -1,3 +1,21 @@
+import { onSnapshot } from "firebase/firestore";
+export function onGameUpdate(
+  gameId: string,
+  callback: (game: Game | null) => void,
+) {
+  const gameRef = doc(db, "games", gameId);
+  const unsubscribe = onSnapshot(gameRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+    callback({
+      id: snapshot.id,
+      ...snapshot.data(),
+    } as Game);
+  });
+  return unsubscribe;
+}
 import { db } from "../lib/firebase";
 import {
   collection,
@@ -37,7 +55,10 @@ export async function createGame(playerId: string): Promise<Game> {
   };
 }
 
-export async function joinGame(gameId: string, playerId: string): Promise<Game | null> {
+export async function joinGame(
+  gameId: string,
+  playerId: string,
+): Promise<Game | null> {
   const gameRef = doc(db, "games", gameId);
 
   return runTransaction(db, async (transaction) => {
@@ -78,7 +99,7 @@ export async function getGame(gameId: string): Promise<Game | null> {
 export async function listWaitingGames(): Promise<Game[]> {
   const q = query(collection(db, "games"), where("status", "==", "waiting"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Game));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Game);
 }
 
 export async function updateGame(gameId: string, data: Partial<Game>) {

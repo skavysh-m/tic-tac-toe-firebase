@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getGame, updateGame, Game } from "../../../lib/game";
+import { getGame, updateGame, Game, onGameUpdate } from "../../../lib/game";
 import { getUser, updateUserStats, User } from "../../../lib/user";
 import { getUsersByIds } from "../../../lib/getUsersByIds";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
@@ -38,13 +38,12 @@ export default function GameClient() {
   const [playerNames, setPlayerNames] = useState<{ [id: string]: string }>({});
 
   useEffect(() => {
-    async function load() {
-      if (!gameId || !userId) return;
-      setLoading(true);
-      const g = await getGame(gameId);
+    if (!gameId || !userId) return;
+    setLoading(true);
+    setUser(null);
+    getUser(userId).then((u) => setUser(u));
+    const unsubscribe = onGameUpdate(gameId, async (g) => {
       setGame(g);
-      setUser(await getUser(userId));
-      // Fetch player names
       if (g) {
         const users = await getUsersByIds(g.players);
         const names: { [id: string]: string } = {};
@@ -54,8 +53,8 @@ export default function GameClient() {
         setPlayerNames(names);
       }
       setLoading(false);
-    }
-    load();
+    });
+    return () => unsubscribe();
   }, [gameId, userId]);
 
   async function handleMove(idx: number) {
